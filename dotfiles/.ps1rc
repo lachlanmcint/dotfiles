@@ -43,7 +43,7 @@ __ps1_git_workdir() {
     local reset='tput sgr0'
 
     # Will be executed on every prompt.
-    echo '$(workdir="\w"; git_topdir=$(basename `git rev-parse --show-toplevel 2> /dev/null` 2> /dev/null); git_subdirs=$(/usr/bin/git rev-parse --show-prefix 2> /dev/null); workdir="${workdir%/${git_topdir}}"; workdir="${workdir%/${git_subdirs%/}}"; echo ${bold}${blue}${workdir}${red}${git_topdir:+/$git_topdir}${git_subdirs:+/${git_subdirs%/}})'
+    echo '$(workdir="\w"; git_topdir=$(basename `git rev-parse --show-toplevel 2> /dev/null` 2> /dev/null); git_subdirs=$(/usr/bin/git rev-parse --show-prefix 2> /dev/null); workdir="${workdir%/${git_subdirs%/}}"; workdir="${workdir%/${git_topdir}}"; echo ${bold}${blue}${workdir}${red}${git_topdir:+/$git_topdir}${git_subdirs:+/${git_subdirs%/}})'
 }
 
 # Adds '__git_ps1' output in the form '(output)'.
