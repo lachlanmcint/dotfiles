@@ -1,66 +1,114 @@
 #! /usr/bin/env bash
 
-# Set variable identifying the chroot you work in (used in the prompt below)
-if [ -z "${debian_chroot:-}" ] && [ -r /etc/debian_chroot ]; then
-    debian_chroot=$(cat /etc/debian_chroot)
-fi
+# Adds the current chroot in the form '(chroot)'.
+__ps1_debian_chroot() {
+    if [ -z "${debian_chroot:-}" ] && [ -r /etc/debian_chroot ]; then
+        debian_chroot=$(cat /etc/debian_chroot)
+    fi
 
-# Set a fancy prompt (non-colour, unless we know we "want" colour)
+    echo '${debian_chroot:+($debian_chroot)}'
+}
+
+# Adds user and host information in the form 'user@host'.
+__ps1_user_at_host() {
+    local green='tput setaf 2'
+    local bold='tput bold'
+    local reset='tput sgr0'
+
+    echo '${bold}${green}\u@\h${reset}'
+}
+
+# Adds the workdir in the form '~/working/directory'.
+__ps1_workdir() {
+    local blue='tput setaf 4'
+    local bold='tput bold'
+    local reset='tput sgr0'
+
+    echo '${bold}${blue}\w${reset}'
+}
+
+# Adds the workdir in the form '~/working/directory', with special colouring for
+# Git subdirectories.
+__ps1_git_workdir() {
+    local red='tput setaf 1'
+    local blue='tput setaf 4'
+    local bold='tput bold'
+    local reset='tput sgr0'
+
+    # Will be executed on every prompt.
+    # Steps taken in each semicolon separated statement:
+    # 1. Assign the prompt string '\w' to 'workdir'. This expands to the path
+    #    part of a prompt.
+    # 2. Assign the current Git project subpath, if any, to 'git_subdirs'. This
+    #    will be in the form 'git/project/subdirectories/'.
+    # 3. Modify 'workdir' (it will be expanded by 'echo'), removing 'git_subdirs'
+    #    from the end of the string if it exists. This is so Git project
+    #    subdirectories can be printed in a different colour in the next step.
+    # 4. Return the final string, formatting the Git subdirectory nicely
+    #    for the prompt if it exists (subdir/ -> /subdir).
+    echo '$(workdir="\w"; git_subdirs=$(/usr/bin/git rev-parse --show-prefix 2> /dev/null); workdir="${workdir%/${git_subdirs%/}}"; echo ${bold}${blue}${workdir}${red}${git_subdirs:+/${git_subdirs%/}})'
+}
+
+# Adds '__git_ps1' output in the form '(output)'.
+__ps1_git_prompt() {
+    local red='tput setaf 1'
+    local bold='tput bold'
+    local reset='tput sgr0'
+
+    echo '${red}${bold}$(__git_ps1 "(%s)")${reset}'
+}
+
+# Check if terminal type indicates colour support. If not, check for colour
+# support with 'tput'.
 case "$TERM" in
     xterm-color|*-256color) colour_prompt=yes;;
 esac
 
-# Uncomment for a coloured prompt, if the terminal has the capability; turned
-# off by default to not distract the user: the focus in a terminal window
-# should be on the output of commands, not on the prompt
-#force_colour_prompt=yes
-
-if [ -n "$force_colour_prompt" ]; then
+if [ -z "$colour_prompt" ]; then
     if [ -x /usr/bin/tput ] && tput setaf 1 >& /dev/null; then
         # We have colour support; assume it's compliant with Ecma-48
         # (ISO/IEC-6429). (Lack of such support is extremely rare, and such
         # a case would tend to support setf rather than setaf.)
         colour_prompt=yes
-    else
-	    colour_prompt=
     fi
 fi
 
-if [ -f /usr/lib/git-core/git-sh-prompt ]; then
+# If we have 'git' and 'git-sh-prompt', set up for a Git-enabled prompt.
+if [ -f /usr/lib/git-core/git-sh-prompt ] && [ -x /usr/bin/git ]; then
     source /usr/lib/git-core/git-sh-prompt
     git_prompt=yes
 
+    # https://mjswensen.com/blog/git-status-prompt-options/
     GIT_PS1_SHOWDIRTYSTATE=true
     GIT_PS1_SHOWSTASHSTATE=true
     GIT_PS1_SHOWUNTRACKEDFILES=true
-    GIT_PS1_SHOWUPSTREAM=true
-else
-    git_prompt=
+    GIT_PS1_SHOWUPSTREAM=verbose
 fi
 
+# Set various prompts depending on whether we support colour and Git.
 if [ "$colour_prompt" = yes ]; then
-    red=`tput setaf 1`
-    green=`tput setaf 2`
-    blue=`tput setaf 4`
-    bold=`tput bold`
-    reset=`tput sgr0`
-
     if [ "$git_prompt" = yes ]; then
-        PS1='${debian_chroot:+($debian_chroot) }${bold}${green}\u@\h${reset}${bold}:${blue}$(var=`echo "\w"`; var2=`echo $(git rev-parse --show-prefix 2> /dev/null)`; echo "${var%/${var2%/}}")${red}$(var=`echo $(git rev-parse --show-prefix 2> /dev/null)`; var2=`echo "${var%/}"`; if [ -n "$var2" ]; then echo "/${var2}"; fi)$(__git_ps1)${reset}\n\$ '
+        # user@host:~/current/workdir (branch)
+        # $
+        PS1="$(__ps1_debian_chroot) $(__ps1_user_at_host):$(__ps1_git_workdir) $(__ps1_git_prompt)\n\$ "
     else
-        PS1='${debian_chroot:+($debian_chroot) }${bold}${green}\u@\h${reset}${bold}:${blue}\w${reset}\n\$ '
+        # user@host:~/current/workdir
+        # $
+        PS1="$(__ps1_debian_chroot) $(__ps1_user_at_host):$(__ps1_workdir)\n\$ "
     fi
 else
+    # Both same as above, but without colours.
     if [ "$git_prompt" = yes ]; then
-        PS1='${debian_chroot:+($debian_chroot) }\u@\h:\w$(__git_ps1)\n\$ '
+        PS1="$(__ps1_debian_chroot) \u@\h:\w$(__git_ps1)\n\$ "
     else
-        PS1='${debian_chroot:+($debian_chroot) }\u@\h:\w\n\$ '
+        PS1="$(__ps1_debian_chroot) \u@\h:\w\n\$ "
     fi
 fi
 
-unset colour_prompt force_colour_prompt git_prompt
+# Unset variables used as intermediaries when setting up.
+unset colour_prompt git_prompt
 
-# If this is an xterm set the title to user@host:dir
+# If this is an xterm set the title to 'user@host:dir'.
 case "$TERM" in
     xterm*|rxvt*)
         PS1="\[\e]0;${debian_chroot:+($debian_chroot)}\u@\h: \w\a\]$PS1"

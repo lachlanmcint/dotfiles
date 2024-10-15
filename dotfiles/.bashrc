@@ -1,8 +1,5 @@
 # ~/.bashrc: executed by bash(1) for non-login shells.
 
-# TODO: could probably use functions and local variables to help
-# ensure no variables leak out which shouldn't
-
 # If not running interactively, don't do anything
 case $- in
     *i*) ;;
