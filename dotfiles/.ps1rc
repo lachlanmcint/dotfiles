@@ -1,0 +1,70 @@
+#! /usr/bin/env bash
+
+# Set variable identifying the chroot you work in (used in the prompt below)
+if [ -z "${debian_chroot:-}" ] && [ -r /etc/debian_chroot ]; then
+    debian_chroot=$(cat /etc/debian_chroot)
+fi
+
+# Set a fancy prompt (non-colour, unless we know we "want" colour)
+case "$TERM" in
+    xterm-color|*-256color) colour_prompt=yes;;
+esac
+
+# Uncomment for a coloured prompt, if the terminal has the capability; turned
+# off by default to not distract the user: the focus in a terminal window
+# should be on the output of commands, not on the prompt
+#force_colour_prompt=yes
+
+if [ -n "$force_colour_prompt" ]; then
+    if [ -x /usr/bin/tput ] && tput setaf 1 >& /dev/null; then
+        # We have colour support; assume it's compliant with Ecma-48
+        # (ISO/IEC-6429). (Lack of such support is extremely rare, and such
+        # a case would tend to support setf rather than setaf.)
+        colour_prompt=yes
+    else
+	    colour_prompt=
+    fi
+fi
+
+if [ -f /usr/lib/git-core/git-sh-prompt ]; then
+    source /usr/lib/git-core/git-sh-prompt
+    git_prompt=yes
+
+    GIT_PS1_SHOWDIRTYSTATE=true
+    GIT_PS1_SHOWSTASHSTATE=true
+    GIT_PS1_SHOWUNTRACKEDFILES=true
+    GIT_PS1_SHOWUPSTREAM=true
+else
+    git_prompt=
+fi
+
+if [ "$colour_prompt" = yes ]; then
+    red=`tput setaf 1`
+    green=`tput setaf 2`
+    blue=`tput setaf 4`
+    bold=`tput bold`
+    reset=`tput sgr0`
+
+    if [ "$git_prompt" = yes ]; then
+        PS1='${debian_chroot:+($debian_chroot) }${bold}${green}\u@\h${reset}${bold}:${blue}$(var=`echo "\w"`; var2=`echo $(git rev-parse --show-prefix 2> /dev/null)`; echo "${var%/${var2%/}}")${red}$(var=`echo $(git rev-parse --show-prefix 2> /dev/null)`; var2=`echo "${var%/}"`; if [ -n "$var2" ]; then echo "/${var2}"; fi)$(__git_ps1)${reset}\n\$ '
+    else
+        PS1='${debian_chroot:+($debian_chroot) }${bold}${green}\u@\h${reset}${bold}:${blue}\w${reset}\n\$ '
+    fi
+else
+    if [ "$git_prompt" = yes ]; then
+        PS1='${debian_chroot:+($debian_chroot) }\u@\h:\w$(__git_ps1)\n\$ '
+    else
+        PS1='${debian_chroot:+($debian_chroot) }\u@\h:\w\n\$ '
+    fi
+fi
+
+unset colour_prompt force_colour_prompt git_prompt
+
+# If this is an xterm set the title to user@host:dir
+case "$TERM" in
+    xterm*|rxvt*)
+        PS1="\[\e]0;${debian_chroot:+($debian_chroot)}\u@\h: \w\a\]$PS1"
+        ;;
+    *)
+        ;;
+esac
