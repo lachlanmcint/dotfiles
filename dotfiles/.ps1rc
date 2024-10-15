@@ -27,6 +27,13 @@ __ps1_workdir() {
     echo '${bold}${blue}\w${reset}'
 }
 
+__current_git_path() {
+    topdir=$(basename `git rev-parse --show-toplevel 2> /dev/null`)
+    subdirs=$(/usr/bin/git rev-parse --show-prefix 2> /dev/null)
+
+    echo "/${topdir}/${subdirs%/}"
+}
+
 # Adds the workdir in the form '~/working/directory', with special colouring for
 # Git subdirectories.
 __ps1_git_workdir() {
@@ -36,17 +43,7 @@ __ps1_git_workdir() {
     local reset='tput sgr0'
 
     # Will be executed on every prompt.
-    # Steps taken in each semicolon separated statement:
-    # 1. Assign the prompt string '\w' to 'workdir'. This expands to the path
-    #    part of a prompt.
-    # 2. Assign the current Git project subpath, if any, to 'git_subdirs'. This
-    #    will be in the form 'git/project/subdirectories/'.
-    # 3. Modify 'workdir' (it will be expanded by 'echo'), removing 'git_subdirs'
-    #    from the end of the string if it exists. This is so Git project
-    #    subdirectories can be printed in a different colour in the next step.
-    # 4. Return the final string, formatting the Git subdirectory nicely
-    #    for the prompt if it exists (subdir/ -> /subdir).
-    echo '$(workdir="\w"; git_subdirs=$(/usr/bin/git rev-parse --show-prefix 2> /dev/null); workdir="${workdir%/${git_subdirs%/}}"; echo ${bold}${blue}${workdir}${red}${git_subdirs:+/${git_subdirs%/}})'
+    echo '$(workdir="\w"; git_topdir=$(basename `git rev-parse --show-toplevel 2> /dev/null` 2> /dev/null); git_subdirs=$(/usr/bin/git rev-parse --show-prefix 2> /dev/null); workdir="${workdir%/${git_topdir}}"; workdir="${workdir%/${git_subdirs%/}}"; echo ${bold}${blue}${workdir}${red}${git_topdir:+/$git_topdir}${git_subdirs:+/${git_subdirs%/}})'
 }
 
 # Adds '__git_ps1' output in the form '(output)'.
